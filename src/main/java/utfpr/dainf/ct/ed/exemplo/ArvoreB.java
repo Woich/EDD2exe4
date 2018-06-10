@@ -1,6 +1,8 @@
 package utfpr.dainf.ct.ed.exemplo;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -55,6 +57,7 @@ public class ArvoreB<K extends Comparable<? super K>> {
         no.setChaves((K[])new Comparable[2*grauMin-1]);
         no.setFilhos(new NoArvoreB[2*grauMin]);
         no.setFolha(true);
+        no.setNumChaves(0);
         return no;
     }
     
@@ -102,7 +105,17 @@ public class ArvoreB<K extends Comparable<? super K>> {
      * @return O resultado da busca ou {@code null}
      */
     protected ResultadoBusca busca(NoArvoreB<K> x, K k) {
-        throw new RuntimeException("Não implementado");
+        if (x == null){
+            return null;
+        }
+        for(int i = 0; i < x.getNumChaves(); i++){
+            if (x.getChave(i )== k){
+                return new ResultadoBusca(x, i);
+            } else if (k.compareTo(x.getChave(i)) == -1){
+                return busca(x.getFilho(i), k);
+            }
+        }
+        return busca(x.getFilho(2*grauMin-1),k);
     }
     
     /**
@@ -122,7 +135,36 @@ public class ArvoreB<K extends Comparable<? super K>> {
      * @param y O filho cheio
      */
     protected void divideFilho(NoArvoreB<K> x, int i, NoArvoreB<K> y) {
-        throw new RuntimeException("Não implementado");
+        NoArvoreB<K> esquerda = alocaNo();
+        K chaves_esq[] = (K[])new Comparable[2*grauMin - 1];
+        K chaves_dir[] = (K[])new Comparable[2*grauMin - 1];
+        K chave_meio = y.getChave((2*grauMin-1)/2);
+        for(int j = 0; j < y.getChaves().length; j++){
+            if (j < (2*grauMin-1)/2){
+                chaves_esq[j] = y.getChave(j);
+                //Still need to set sons
+            }
+            if (j > (2*grauMin-1)/2){
+                chaves_dir[j - ((2*grauMin-1)/2 + 1)] = y.getChave(j);
+            }
+        }
+        esquerda.setChaves(chaves_esq);
+        esquerda.setNumChaves(grauMin-1);
+        y.setChaves(chaves_dir);
+        y.setNumChaves(grauMin);
+        
+        NoArvoreB<K> aux = null;
+        NoArvoreB<K> aux2 = x.getFilho(i);
+        for(int j = i; j < grauMin*2; j++){
+            x.setFilho(aux, j);
+            aux = aux2;
+            if (j < grauMin*2-1){
+                aux2 = x.getFilho(j+1);
+            }
+        }
+        insereNaoCheio(x, chave_meio);
+        x.setFilho(esquerda, i);
+        x.setFilho(y, i+1);
     }
     
     /**
@@ -132,7 +174,24 @@ public class ArvoreB<K extends Comparable<? super K>> {
      * @param k A chave a ser inserida no nó
      */
     protected void insereNaoCheio(NoArvoreB<K> x, K k) {
-        throw new RuntimeException("Não implementado");
+        x.setNumChaves(x.getNumChaves() + 1);
+        for (int i =0; i < x.getChaves().length; i++){
+            if (x.getChave(i) == null){
+                x.setChave(k, i);
+                break;
+            }
+            if (k.compareTo(x.getChave(i)) == -1){
+                K aux;
+                K aux2 = k;
+                for (int j = i; j < x.getChaves().length; j++){
+                    aux = x.getChave(j);
+                    x.setChave(aux2, j);
+                    aux2 = aux;
+                }
+                break;
+            }
+        }
+        //x.setChave(k, );
     }
     
     /**
@@ -140,7 +199,71 @@ public class ArvoreB<K extends Comparable<? super K>> {
      * @param k A chave a ser inserida
      */
     public void insere(K k) {
-        throw new RuntimeException("Não implementado");
+        NoArvoreB<K> aux = raiz;
+        NoArvoreB<K> pai = null;
+        List<NoArvoreB<K>> pai_list = new ArrayList();
+        boolean inserted = false;
+        int index = 0;
+        do {
+            if (aux.isFolha()){
+                if (aux.getNumChaves() < grauMin*2 - 1){
+                    insereNaoCheio(aux, k);
+                } else {
+                    /*Split*/
+                    K total[] = (K[])new Comparable[2*grauMin];
+                    for (int i = 0; i < total.length; i++){
+                        if (i != total.length - 1){
+                            if (aux.getChave(i).compareTo(k) >= 0){
+                                total[i] = k;
+                                for (int j = i; j < aux.getChaves().length; j++){
+                                    total[j+1] = aux.getChave(j);
+                                }
+                                break;
+                            } else {
+                                total[i] = aux.getChave(i);
+                            }
+                        } else {
+                            total[i] = k;
+                        }
+                    }
+                    aux.setChaves(total);
+                    if (pai == null){
+                        pai = alocaNo();
+                        pai.setFolha(false);
+                        divideFilho(pai, 0, aux);
+                        raiz = pai;
+                        break;
+                    } else if (pai.getNumChaves() < 2*grauMin - 1){
+                        for (int i = 0; i < pai.getFilhos().length; i++){
+                            if (pai.getFilho(i) == aux){
+                                index = i;
+                                break;
+                            }
+                        }
+                        divideFilho(pai, index, aux);
+                    } else {
+                        throw new RuntimeException("Implementar, para quando no pai está cheio");
+                    }
+                    //throw new RuntimeException("AInda n");
+                }
+                inserted = true;
+            } else {
+                for (int i = 0; i < aux.getNumChaves(); i++){
+                    if (aux.getChave(i).compareTo(k) >= 0){
+                        pai_list.add(aux);
+                        pai = aux;
+                        aux = aux.getFilho(i);
+                        break;
+                    }
+                    if (i == aux.getNumChaves()-1){
+                        pai_list.add(aux);
+                        pai = aux;
+                        aux = aux.getFilho(aux.getNumChaves());
+                        break;
+                    }
+                }
+            }
+        } while (!inserted);
     }
     
     /**
