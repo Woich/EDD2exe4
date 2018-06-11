@@ -108,14 +108,21 @@ public class ArvoreB<K extends Comparable<? super K>> {
         if (x == null){
             return null;
         }
+        if (k.equals(130)){
+            int index = 0;
+        }
         for(int i = 0; i < x.getNumChaves(); i++){
-            if (x.getChave(i )== k){
+            if (x.getChave(i).equals(k)){
                 return new ResultadoBusca(x, i);
-            } else if (k.compareTo(x.getChave(i)) == -1){
+            } else if (k.compareTo(x.getChave(i)) < 0){
                 return busca(x.getFilho(i), k);
             }
+            if (i == x.getNumChaves()-1){
+                return busca(x.getFilho(i+1), k);
+            }
         }
-        return busca(x.getFilho(2*grauMin-1),k);
+        //return busca(x.getFilho(2*grauMin),k);
+        return null;
     }
     
     /**
