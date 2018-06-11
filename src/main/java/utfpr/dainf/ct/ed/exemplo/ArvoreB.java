@@ -142,14 +142,30 @@ public class ArvoreB<K extends Comparable<? super K>> {
         for(int j = 0; j < y.getChaves().length; j++){
             if (j < (2*grauMin-1)/2){
                 chaves_esq[j] = y.getChave(j);
-                //Still need to set sons
+                esquerda.setFilho(y.getFilho(j), j);
+                if (j == (2*grauMin-1)/2 - 1){
+                    esquerda.setFilho(y.getFilho(j+1), j+1);
+                }
             }
             if (j > (2*grauMin-1)/2){
                 chaves_dir[j - ((2*grauMin-1)/2 + 1)] = y.getChave(j);
+                y.setFilho(y.getFilho(j), j - ((2*grauMin-1)/2+1));
+                y.setFilho(null,j);
+                if (j == y.getChaves().length - 1 && 
+                    y.getFilhos().length > y.getChaves().length){
+                    y.setFilho(y.getFilho(y.getChaves().length), j + 1 - ((2*grauMin-1)/2+1));
+                    y.setFilho(null,y.getChaves().length);
+                }
             }
+        }
+        if (esquerda.getFilho(0) != null){
+            esquerda.setFolha(false);
         }
         esquerda.setChaves(chaves_esq);
         esquerda.setNumChaves(grauMin-1);
+        if (y.getFilho(0) != null){
+            y.setFolha(false);
+        }
         y.setChaves(chaves_dir);
         y.setNumChaves(grauMin);
         
@@ -163,6 +179,7 @@ public class ArvoreB<K extends Comparable<? super K>> {
             }
         }
         insereNaoCheio(x, chave_meio);
+        x.setFolha(false);
         x.setFilho(esquerda, i);
         x.setFilho(y, i+1);
     }
@@ -193,7 +210,82 @@ public class ArvoreB<K extends Comparable<? super K>> {
         }
         //x.setChave(k, );
     }
-    
+    public boolean inserePai(NoArvoreB<K> pai, NoArvoreB<K> no, int index){
+        if (pai.getNumChaves() >= 2*grauMin - 1){
+            K total[] = (K[])new Comparable[2*grauMin];
+            NoArvoreB<K> total_filhos[] = new NoArvoreB[2*grauMin + 1];
+            for(int i = 0; i < pai.getChaves().length; i++){
+                total[i] = pai.getChave(i);
+            }
+            for(int i = 0; i < pai.getFilhos().length; i++){
+                total_filhos[i] = pai.getFilho(i);
+            }
+            total[index] = no.getChave(0);
+            int numChaves = index;
+            for(int i = index + 1; i < total.length; i++){
+                total[i] = pai.getChave(i-1);
+                if (total[i] != null){
+                    numChaves++;
+                }
+            }
+            total_filhos[index] = no.getFilho(0);
+            total_filhos[index+1] = no.getFilho(1);
+            for (int i = index + 2; i < total_filhos.length; i++){
+                total_filhos[i] = pai.getFilho(i-1);
+            }
+            pai.setChaves(total);
+            pai.setNumChaves(numChaves);
+            pai.setFilhos(total_filhos);
+            return true;
+        }
+        K total[] = (K[])new Comparable[2*grauMin - 1];
+        NoArvoreB<K> total_filhos[] = new NoArvoreB[2*grauMin];
+        for(int i = 0; i < pai.getChaves().length; i++){
+            total[i] = pai.getChave(i);
+        }
+        for(int i = 0; i < pai.getFilhos().length; i++){
+            total_filhos[i] = pai.getFilho(i);
+        }
+        total[index] = no.getChave(0);
+        int numChaves = index;
+        for(int i = index + 1; i < total.length; i++){
+            total[i] = pai.getChave(i-1);
+            if (total[i] != null){
+                numChaves++;
+            }
+        }
+        total_filhos[index] = no.getFilho(0);
+        total_filhos[index+1] = no.getFilho(1);
+        for (int i = index + 2; i < total_filhos.length; i++){
+            total_filhos[i] = pai.getFilho(i-1);
+        }
+        pai.setChaves(total);
+        pai.setNumChaves(numChaves);
+        pai.setFilhos(total_filhos);
+        return false;
+    }
+    public void insereCheio(List<NoArvoreB<K>> list, NoArvoreB<K> no_cheio){
+        NoArvoreB<K> pai = list.remove(list.size()-1);
+        NoArvoreB<K> aux_no = alocaNo();
+        int index = 0;
+        for (int i = 0; i < pai.getFilhos().length; i++){
+            if (pai.getFilho(i) == no_cheio){
+                index = i;
+                break;
+            }
+        }
+        divideFilho(aux_no, 0, no_cheio);
+        if (inserePai(pai, aux_no, index)){
+            if (pai == raiz){
+                NoArvoreB<K> nova_raiz = alocaNo();
+                divideFilho(nova_raiz, 0, pai);
+                raiz = nova_raiz;
+            } else {
+                insereCheio(list, pai);
+            }
+        }
+        
+    }
     /**
      * Insere a chave especificada n árvore.
      * @param k A chave a ser inserida
@@ -242,7 +334,8 @@ public class ArvoreB<K extends Comparable<? super K>> {
                         }
                         divideFilho(pai, index, aux);
                     } else {
-                        throw new RuntimeException("Implementar, para quando no pai está cheio");
+                        insereCheio(pai_list, aux);
+                        //throw new RuntimeException("Implementar, para quando no pai está cheio");
                     }
                     //throw new RuntimeException("AInda n");
                 }
@@ -264,6 +357,23 @@ public class ArvoreB<K extends Comparable<? super K>> {
                 }
             }
         } while (!inserted);
+        calculaNumChaves(raiz);
+    }
+    public void calculaNumChaves(NoArvoreB<K> no){
+        if (no != null){
+            int index = 0;
+            for (int i = 0; i < no.getChaves().length; i++){
+                if (no.getChave(i) == null){
+                    index = i;
+                    break;
+                }
+                index = i+1;
+            }
+            no.setNumChaves(index);
+            for (int i = 0; i < no.getFilhos().length; i++){
+                calculaNumChaves(no.getFilho(i));
+            }
+        }
     }
     
     /**
